@@ -1,0 +1,939 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>UseFirst – Smart Household Consumption Prioritization and Replenishment</title>
+<meta name="description" content="UseFirst tracks household groceries, shows what to use first, warns before food expires and builds shopping lists from real usage.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@500;700;800&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --ink: #0f172a; --on-ink: #ffffff; --muted: #475569; --paper: #f4f7fb; --card: #ffffff; --line: #d9e2ec;
+  --blue: #0369a1; --blue-soft: #e0f2fe; --red: #b91c1c; --red-soft: #fee2e2; --amber: #92400e; --amber-soft: #fef3c7;
+  --green: #166534; --green-soft: #dcfce7; --gray: #475569; --gray-soft: #e8edf3; --field: #ffffff;
+  --head: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --body: "Source Sans 3", "Segoe UI", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ink: #e2e8f0; --on-ink: #0f172a; --muted: #94a3b8; --paper: #0b1220; --card: #111a2e; --line: #26334d;
+    --blue: #38bdf8; --blue-soft: #0c2a3f; --red: #fca5a5; --red-soft: #3b1414; --amber: #fcd34d; --amber-soft: #3a2a0a;
+    --green: #86efac; --green-soft: #0f2e1c; --gray: #a8b5c7; --gray-soft: #1b2740; --field: #0e1730;
+  }
+}
+:root[data-theme="dark"] {
+  --ink: #e2e8f0; --on-ink: #0f172a; --muted: #94a3b8; --paper: #0b1220; --card: #111a2e; --line: #26334d;
+  --blue: #38bdf8; --blue-soft: #0c2a3f; --red: #fca5a5; --red-soft: #3b1414; --amber: #fcd34d; --amber-soft: #3a2a0a;
+  --green: #86efac; --green-soft: #0f2e1c; --gray: #a8b5c7; --gray-soft: #1b2740; --field: #0e1730;
+}
+:root { box-sizing: border-box; padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
+*, *::before, *::after { box-sizing: inherit; }
+html { scroll-padding-top: env(safe-area-inset-top, 0px); }
+body { margin: 0; font-family: var(--body); font-size: 1.0625rem; line-height: 1.5; color: var(--ink); background: var(--paper); }
+h1, h2, h3 { font-family: var(--head); line-height: 1.15; margin: 0 0 .5rem; }
+h1 { font-size: clamp(1.6rem, 3vw, 2.1rem); font-weight: 800; }
+h2 { font-size: 1.2rem; font-weight: 700; }
+h3 { font-size: 1.05rem; font-weight: 700; }
+p { margin: 0 0 .75rem; }
+button, input, select { font: inherit; color: inherit; }
+:focus-visible { outline: 3px solid var(--blue); outline-offset: 2px; border-radius: 4px; }
+.muted { color: var(--muted); } .small { font-size: .92rem; } .center { text-align: center; }
+
+/* Auth */
+.auth { min-height: 100vh; display: grid; place-items: center; padding: 1.5rem 1rem; }
+.auth-card { width: 100%; max-width: 440px; background: var(--card); border: 2px solid var(--ink); border-radius: 16px; padding: 1.75rem; box-shadow: 6px 6px 0 var(--ink); }
+.auth-card.wide-card { max-width: 760px; }
+.brand-big { font-family: var(--head); font-weight: 800; font-size: 1.5rem; margin-bottom: .75rem; color: var(--blue); }
+.seg { display: flex; gap: .4rem; margin: 1rem 0; }
+.seg button { flex: 1; padding: .55rem; border: 2px solid var(--ink); border-radius: 8px; background: var(--card); font-weight: 700; cursor: pointer; }
+.seg button.on { background: var(--ink); color: var(--on-ink); }
+.fineprint { font-size: .88rem; color: var(--muted); margin-top: 1rem; }
+.two { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-top: 1rem; }
+.two form { padding: 1rem; border: 1px solid var(--line); border-radius: 12px; }
+
+/* Forms */
+.f { display: block; margin-bottom: .8rem; }
+.f > span { display: block; font-weight: 600; font-size: .95rem; margin-bottom: .25rem; }
+input[type=text], input[type=email], input[type=password], input[type=number], input[type=date], input[type=search], select {
+  width: 100%; padding: .6rem .7rem; border: 2px solid var(--line); border-radius: 8px; background: var(--field); min-height: 2.6rem;
+}
+input:focus, select:focus { border-color: var(--blue); }
+.bar-row { display: flex; gap: .5rem; } .bar-row input { flex: 1; }
+.hint { font-size: .88rem; color: var(--muted); margin: .3rem 0 0; }
+.err { color: var(--red); font-weight: 600; min-height: 1.2em; margin: 0 0 .5rem; }
+.two-s { display: grid; grid-template-columns: 1fr 1fr; gap: .8rem; }
+.chk { display: flex; align-items: center; gap: .55rem; cursor: pointer; }
+.chk input { width: 1.2rem; height: 1.2rem; accent-color: var(--blue); }
+
+/* Buttons */
+.btn { display: inline-block; padding: .6rem 1.1rem; border: 2px solid var(--ink); border-radius: 8px; background: transparent; font-weight: 700; cursor: pointer; }
+.btn:hover { background: var(--ink); color: var(--on-ink); }
+.btn.primary { background: var(--ink); color: var(--on-ink); }
+.btn.primary:hover { background: var(--blue); border-color: var(--blue); color: #fff; }
+.btn.wide { width: 100%; }
+.danger-btn { border-color: var(--red); color: var(--red); } .danger-btn:hover { background: var(--red); color: var(--card); border-color: var(--red); }
+.small-btn { padding: .3rem .7rem; border: 2px solid var(--ink); border-radius: 6px; background: var(--card); font-weight: 700; font-size: .9rem; cursor: pointer; }
+.small-btn:hover { background: var(--ink); color: var(--on-ink); }
+.small-btn.ghost { border-color: var(--line); } .small-btn.ghost:hover { border-color: var(--ink); }
+.small-btn.danger { color: var(--red); } .small-btn.danger:hover { background: var(--red); color: var(--card); border-color: var(--red); }
+.link-btn, .linklike { background: none; border: 0; padding: 0; color: var(--blue); font-weight: 700; cursor: pointer; text-align: left; }
+.link-btn { text-decoration: underline; } .linklike:hover { text-decoration: underline; }
+.row-gap { display: flex; gap: .6rem; flex-wrap: wrap; }
+
+/* Shell */
+.shell { display: grid; grid-template-columns: 220px 1fr; min-height: 100vh; }
+.side { background: var(--card); border-right: 1px solid var(--line); padding: 1.25rem .9rem; position: sticky; top: 0; align-self: start; height: 100vh; }
+.brand { font-family: var(--head); font-weight: 800; font-size: 1.5rem; color: var(--blue); margin: 0 0 1.25rem .5rem; }
+.side-nav { display: flex; flex-direction: column; gap: .2rem; }
+.nav-btn { display: flex; justify-content: space-between; align-items: center; padding: .6rem .75rem; border: 0; border-radius: 8px; background: none; font-weight: 600; cursor: pointer; text-align: left; color: var(--muted); }
+.nav-btn:hover { background: var(--blue-soft); color: var(--ink); }
+.nav-btn.on { background: var(--ink); color: var(--on-ink); }
+.badge { min-width: 1.4rem; padding: 0 .4rem; border-radius: 99px; background: var(--red); color: #fff; font-size: .8rem; text-align: center; margin-left: .4rem; }
+.main { min-width: 0; }
+.bar { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; display: flex; justify-content: space-between; align-items: center; gap: 1rem; padding: .7rem 1.5rem; background: var(--paper); border-bottom: 1px solid var(--line); }
+.bar-l, .bar-r { display: flex; align-items: center; gap: .7rem; flex-wrap: wrap; }
+.role { background: var(--blue-soft); color: var(--blue); font-weight: 700; font-size: .85rem; padding: .15rem .6rem; border-radius: 99px; }
+.view { padding: 1.5rem; max-width: 1100px; }
+.bottom { display: none; }
+.page-head { display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem; }
+.page-head h1 { margin: 0; }
+.lead { max-width: 65ch; }
+.sec { margin-top: 2rem; }
+
+/* Cards */
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 1.1rem 1.25rem; margin-bottom: 1rem; }
+.card.flush { padding: 0; overflow: hidden; }
+.card-h { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: .5rem; }
+.card-h h2 { margin: 0; } .pad { padding: 1rem 1.25rem; } .pad-top { margin-top: 1.25rem; }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+.grid2 > .card { margin-bottom: 0; } .grid2 { margin-bottom: 1rem; }
+.stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: .8rem; margin-bottom: 1rem; }
+.stat { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: .9rem 1rem; border-top: 5px solid var(--green); }
+.stat.amber { border-top-color: var(--amber); } .stat.red { border-top-color: var(--red); }
+.stat-l { font-weight: 600; color: var(--muted); margin: 0; font-size: .95rem; }
+.stat-n { font-family: var(--head); font-size: 2.1rem; font-weight: 800; line-height: 1.1; margin: .1rem 0; }
+.stat-s { color: var(--muted); font-size: .88rem; margin: 0; }
+.big-line { font-size: 1.1rem; }
+.empty-card { background: var(--card); border: 2px dashed var(--line); border-radius: 14px; padding: 2rem; text-align: center; }
+
+/* Item rows */
+.ilist, .alist, .slist, .log, .plain-list, .ranked { list-style: none; margin: 0; padding: 0; }
+.irow { display: grid; grid-template-columns: minmax(0, 1fr) 6rem 11rem 16.5rem; gap: .75rem; align-items: center; padding: .7rem 1.1rem; border-top: 1px solid var(--line); }
+.ilist .irow:first-child { border-top: 0; }
+.card:not(.flush) .irow { padding-left: 0; padding-right: 0; }
+.iname { min-width: 0; } .iname .linklike { font-size: 1.05rem; color: var(--ink); } .iname small { display: block; color: var(--muted); font-size: .86rem; }
+.iqty { font-weight: 600; } .ichips { display: flex; gap: .35rem; flex-wrap: wrap; } .iact { display: flex; gap: .4rem; flex-wrap: wrap; justify-content: flex-end; }
+.chip { display: inline-block; padding: .15rem .55rem; border-radius: 6px; font-weight: 700; font-size: .84rem; white-space: nowrap; }
+.chip.red { background: var(--red-soft); color: var(--red); } .chip.amber { background: var(--amber-soft); color: var(--amber); }
+.chip.green { background: var(--green-soft); color: var(--green); } .chip.gray { background: var(--gray-soft); color: var(--gray); }
+.ranked .rank-row { display: grid; grid-template-columns: 2.6rem 1fr; align-items: center; border-top: 1px solid var(--line); }
+.ranked .rank-row:first-child { border-top: 0; }
+.rank { font-family: var(--head); font-weight: 800; font-size: 1.2rem; text-align: center; color: var(--blue); }
+.ilist.inner { width: 100%; } .ilist.inner .irow { border-top: 0; padding-left: 0; }
+.toolbar { display: flex; gap: .8rem; flex-wrap: wrap; align-items: flex-end; margin-bottom: 1rem; }
+.toolbar .f { margin-bottom: 0; } .toolbar .grow { flex: 1; min-width: 200px; } .toolbar select { min-width: 9.5rem; }
+
+
+.grid2 .irow { grid-template-columns: 1fr auto; row-gap: .35rem; }
+.grid2 .iqty { text-align: right; } .grid2 .ichips { grid-column: 1 / -1; } .grid2 .iact { grid-column: 1 / -1; justify-content: flex-start; }
+
+/* Alerts, shopping */
+.arow { display: flex; gap: .75rem; align-items: center; padding: .55rem 0; border-top: 1px solid var(--line); }
+.alist .arow:first-child { border-top: 0; } .alist.full .arow { padding: .75rem 1.25rem; } .arow.unread { background: var(--blue-soft); }
+.srow { display: grid; grid-template-columns: minmax(0, 2fr) auto minmax(0, 2fr) auto; gap: .75rem; align-items: center; padding: .7rem 1.25rem; border-top: 1px solid var(--line); }
+.slist .srow:first-child { border-top: 0; } .srow.done .sname { text-decoration: line-through; color: var(--muted); }
+.sname { font-weight: 600; } .sreason { color: var(--muted); font-size: .9rem; } .unit { color: var(--muted); }
+.sqty { width: 5rem; min-height: 2.2rem; padding: .3rem .5rem; border: 2px solid var(--line); border-radius: 6px; background: var(--field); }
+.inline-form { display: flex; gap: .8rem; align-items: flex-end; flex-wrap: wrap; } .inline-form .f { margin-bottom: 0; } .inline-form .err { flex-basis: 100%; margin: 0; }
+
+/* Reports */
+.legend { display: flex; gap: 1rem; font-size: .9rem; color: var(--muted); margin-bottom: .5rem; } .sw { display: inline-block; width: .8rem; height: .8rem; border-radius: 3px; margin-right: .35rem; } .sw.c, .cbar.c { background: var(--blue); } .sw.w, .cbar.w { background: var(--red); }
+.weekly { display: flex; gap: .6rem; align-items: flex-end; height: 190px; padding-top: 1.4rem; }
+.wk { flex: 1; display: flex; flex-direction: column; align-items: center; height: 100%; } .wk small { color: var(--muted); font-size: .8rem; margin-top: .3rem; white-space: nowrap; }
+.bars { flex: 1; width: 100%; display: flex; gap: 4px; align-items: flex-end; justify-content: center; border-bottom: 2px solid var(--line); }
+.cbar { position: relative; width: 36%; max-width: 28px; border-radius: 4px 4px 0 0; min-height: 2px; } .cbar span { position: absolute; top: -1.25rem; left: 50%; transform: translateX(-50%); font-size: .8rem; font-weight: 700; }
+.hb { display: grid; grid-template-columns: 8.5rem 1fr 2rem; gap: .6rem; align-items: center; margin: .35rem 0; font-size: .95rem; } .hn { text-align: right; font-weight: 700; }
+.ht { background: var(--gray-soft); border-radius: 99px; height: .7rem; overflow: hidden; } .hf { height: 100%; background: var(--blue); border-radius: 99px; } .hf.red { background: var(--red); } .hf.amber { background: var(--amber); }
+.plain-list li { padding: .3rem 0; border-top: 1px solid var(--line); } .plain-list li:first-child { border-top: 0; }
+
+/* Household */
+.tablewrap { overflow-x: auto; } table { border-collapse: collapse; width: 100%; min-width: 480px; } th, td { text-align: left; padding: .55rem .6rem; border-bottom: 1px solid var(--line); }
+.code span { font-family: var(--head); font-size: 1.8rem; font-weight: 800; letter-spacing: .2em; margin-right: .75rem; }
+.settings { max-width: 440px; } .log li { display: flex; gap: .8rem; padding: .35rem 0; border-top: 1px solid var(--line); font-size: .95rem; } .log li:first-child { border-top: 0; } .log time { color: var(--muted); min-width: 8.5rem; flex-shrink: 0; }
+.recipes { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; } .recipe { margin: 0; }
+
+/* Modal, toast */
+.overlay { position: fixed; inset: 0; z-index: 30; background: rgba(15, 23, 42, .55); display: grid; place-items: center; padding: 1rem; overflow-y: auto; }
+.modal { width: 100%; max-width: 520px; background: var(--card); border: 2px solid var(--ink); border-radius: 14px; padding: 1.4rem; max-height: calc(100vh - 2rem); overflow-y: auto; }
+.m-actions { display: flex; justify-content: flex-end; gap: .6rem; margin-top: 1rem; }
+.facts { display: grid; grid-template-columns: 9rem 1fr; gap: .35rem .8rem; margin: 0 0 1rem; } .facts dt { color: var(--muted); font-weight: 600; } .facts dd { margin: 0; }
+.toast { position: fixed; left: 50%; bottom: calc(1.2rem + env(safe-area-inset-bottom, 0px)); transform: translate(-50%, 20px); background: var(--ink); color: var(--on-ink); padding: .7rem 1.1rem; border-radius: 10px; font-weight: 600; opacity: 0; pointer-events: none; transition: opacity .2s, transform .2s; z-index: 40; max-width: calc(100vw - 2rem); }
+.toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+
+@media (max-width: 1180px) {
+  .irow { grid-template-columns: 1fr auto; row-gap: .35rem; }
+  .irow .iqty { text-align: right; } .irow .ichips { grid-column: 1 / -1; } .irow .iact { grid-column: 1 / -1; justify-content: flex-start; }
+}
+
+/* Mobile */
+@media (max-width: 860px) {
+  .shell { grid-template-columns: 1fr; padding-bottom: 4.5rem; } .side { display: none; }
+  .bottom { display: flex; position: fixed; left: 0; right: 0; bottom: 0; z-index: 8; background: var(--card); border-top: 1px solid var(--line); padding: .35rem .4rem calc(.35rem + env(safe-area-inset-bottom, 0px)); overflow-x: auto; gap: .2rem; }
+  .bottom .nav-btn { flex: 0 0 auto; justify-content: center; font-size: .9rem; padding: .5rem .7rem; white-space: nowrap; }
+  .bar { padding: .6rem 1rem; } .who { display: none; } .view { padding: 1rem; }
+  .stats { grid-template-columns: 1fr 1fr; } .grid2, .recipes, .two, .two-s { grid-template-columns: 1fr; }
+  .irow { grid-template-columns: 1fr auto; row-gap: .35rem; } .iname { grid-column: 1; } .iqty { grid-column: 2; text-align: right; } .ichips { grid-column: 1 / -1; } .iact { grid-column: 1 / -1; justify-content: flex-start; }
+  .srow { grid-template-columns: 1fr auto; } .sreason { grid-column: 1 / -1; } .iact { justify-content: flex-start; }
+  .hb { grid-template-columns: 6.5rem 1fr 1.8rem; } .toast { bottom: calc(5rem + env(safe-area-inset-bottom, 0px)); }
+}
+@media (prefers-reduced-motion: reduce) { .toast { transition: none; } }
+
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+<noscript>UseFirst needs JavaScript to run.</noscript>
+<script>
+(function () {
+'use strict';
+
+/* ================= Storage ================= */
+const KEY = 'usefirst.app.v1';
+let DB = { users: [], households: [], session: null };
+try {
+  const raw = localStorage.getItem(KEY);
+  if (raw) { const p = JSON.parse(raw); if (p && Array.isArray(p.users) && Array.isArray(p.households)) DB = p; }
+} catch (e) { /* storage unavailable: app still works for this visit */ }
+function save() { try { localStorage.setItem(KEY, JSON.stringify(DB)); } catch (e) { /* ignore */ } }
+
+/* ================= Helpers ================= */
+const DAY = 864e5;
+const uid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
+function esc(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+function fmtQty(n) { return String(parseFloat(Number(n).toFixed(2))); }
+function startOfToday() { const d = new Date(); d.setHours(0, 0, 0, 0); return d; }
+function parseD(s) { const p = s.split('-').map(Number); return new Date(p[0], p[1] - 1, p[2]); }
+function iso(d) { return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+function plusDays(n) { const d = startOfToday(); d.setDate(d.getDate() + n); return iso(d); }
+function daysLeft(s) { return s ? Math.round((parseD(s) - startOfToday()) / DAY) : null; }
+function fmtDate(s) { return s ? parseD(s).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : ''; }
+function fmtTime(t) { return new Date(t).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }); }
+async function sha(text) {
+  if (window.crypto && crypto.subtle) {
+    const b = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
+    return Array.from(new Uint8Array(b)).map(x => x.toString(16).padStart(2, '0')).join('');
+  }
+  let h = 5381; for (let i = 0; i < text.length; i++) h = ((h << 5) + h + text.charCodeAt(i)) | 0;
+  return 'weak' + h;
+}
+
+/* ================= Reference data ================= */
+const CATEGORIES = ['Dairy', 'Vegetables', 'Fruits', 'Bakery', 'Grains & flour', 'Pulses', 'Meat & eggs', 'Snacks', 'Beverages', 'Oil & spices', 'Other'];
+const UNITS = ['pcs', 'kg', 'g', 'L', 'ml', 'pack'];
+const LOCATIONS = ['Fridge', 'Freezer', 'Pantry', 'Counter', 'Other'];
+const ROLE_LABEL = { manager: 'Home Manager', member: 'Household Member', viewer: 'Viewer' };
+// Sample barcode catalog (stands in for a real product database). shelf = days until expiry, 0 = no expiry.
+const CATALOG = {
+  '8900000000011': { name: 'Milk', category: 'Dairy', unit: 'L', qty: 1, location: 'Fridge', shelf: 4, min: 1 },
+  '8900000000028': { name: 'Curd', category: 'Dairy', unit: 'pack', qty: 1, location: 'Fridge', shelf: 6, min: 1 },
+  '8900000000035': { name: 'Paneer', category: 'Dairy', unit: 'pack', qty: 1, location: 'Fridge', shelf: 7, min: 0 },
+  '8900000000042': { name: 'Bread', category: 'Bakery', unit: 'pack', qty: 1, location: 'Counter', shelf: 4, min: 1 },
+  '8900000000059': { name: 'Eggs', category: 'Meat & eggs', unit: 'pcs', qty: 12, location: 'Fridge', shelf: 14, min: 4 },
+  '8900000000066': { name: 'Butter', category: 'Dairy', unit: 'pack', qty: 1, location: 'Fridge', shelf: 60, min: 1 },
+  '8900000000073': { name: 'Basmati Rice', category: 'Grains & flour', unit: 'kg', qty: 5, location: 'Pantry', shelf: 0, min: 1 },
+  '8900000000080': { name: 'Wheat Flour (Atta)', category: 'Grains & flour', unit: 'kg', qty: 5, location: 'Pantry', shelf: 0, min: 1 },
+  '8900000000097': { name: 'Toor Dal', category: 'Pulses', unit: 'kg', qty: 1, location: 'Pantry', shelf: 0, min: 0.5 },
+  '8900000000103': { name: 'Tomato', category: 'Vegetables', unit: 'kg', qty: 1, location: 'Counter', shelf: 6, min: 0.5 },
+  '8900000000110': { name: 'Onion', category: 'Vegetables', unit: 'kg', qty: 2, location: 'Pantry', shelf: 20, min: 1 },
+  '8900000000127': { name: 'Potato', category: 'Vegetables', unit: 'kg', qty: 2, location: 'Pantry', shelf: 25, min: 1 },
+  '8900000000134': { name: 'Spinach', category: 'Vegetables', unit: 'pack', qty: 1, location: 'Fridge', shelf: 3, min: 0 },
+  '8900000000141': { name: 'Banana', category: 'Fruits', unit: 'pcs', qty: 6, location: 'Counter', shelf: 4, min: 0 },
+  '8900000000158': { name: 'Apple', category: 'Fruits', unit: 'pcs', qty: 4, location: 'Fridge', shelf: 14, min: 0 },
+  '8900000000165': { name: 'Cooking Oil', category: 'Oil & spices', unit: 'L', qty: 1, location: 'Pantry', shelf: 0, min: 0.5 },
+  '8900000000172': { name: 'Tea Powder', category: 'Beverages', unit: 'pack', qty: 1, location: 'Pantry', shelf: 0, min: 1 }
+};
+const RECIPES = [
+  { name: 'French toast', time: 15, uses: ['bread', 'egg', 'milk'], tip: 'Whisk eggs with milk, dip the slices and pan-fry until golden.' },
+  { name: 'Paneer bhurji', time: 15, uses: ['paneer', 'onion', 'tomato'], tip: 'Saute onion and tomato, crumble in the paneer, add spices.' },
+  { name: 'Palak paneer', time: 30, uses: ['spinach', 'paneer', 'onion'], tip: 'Blanch and blend the spinach, cook with onion, add paneer cubes.' },
+  { name: 'Spinach dal', time: 30, uses: ['spinach', 'dal', 'tomato'], tip: 'Pressure-cook the dal, stir in wilted spinach, finish with a garlic tadka.' },
+  { name: 'Curd rice', time: 10, uses: ['curd', 'rice'], tip: 'Mix cooked rice with curd and salt, top with a mustard tadka.' },
+  { name: 'Kheer', time: 35, uses: ['milk', 'rice'], tip: 'Simmer rice in milk until creamy, sweeten and add cardamom.' },
+  { name: 'Vegetable sandwich', time: 10, uses: ['bread', 'tomato', 'onion', 'butter'], tip: 'Layer sliced vegetables between buttered bread and toast it.' },
+  { name: 'Egg curry', time: 25, uses: ['egg', 'onion', 'tomato'], tip: 'Make an onion-tomato masala and simmer boiled eggs in it.' },
+  { name: 'Aloo paratha', time: 30, uses: ['potato', 'flour', 'curd', 'butter'], tip: 'Stuff spiced mashed potato into atta dough and roast with butter.' },
+  { name: 'Banana smoothie', time: 5, uses: ['banana', 'milk', 'curd'], tip: 'Blend ripe bananas with chilled milk or curd.' },
+  { name: 'Fruit salad', time: 10, uses: ['apple', 'banana'], tip: 'Chop the fruit, add lemon juice and a pinch of chaat masala.' },
+  { name: 'Tomato soup', time: 25, uses: ['tomato', 'onion', 'butter', 'bread'], tip: 'Simmer tomato and onion, blend, finish with butter, serve with toast.' }
+];
+
+/* ================= Current user / permissions ================= */
+function curUser() { return DB.users.find(u => u.id === DB.session) || null; }
+function curHH(u) { return u ? (DB.households.find(h => h.id === u.householdId) || null) : null; }
+function perms(u) {
+  const r = u.role;
+  return { inv: r === 'manager', use: r === 'manager' || r === 'member', list: r === 'manager', reports: r === 'manager', admin: r === 'manager' };
+}
+
+/* ================= Item status ================= */
+const isOut = it => it.qty <= 0;
+const isExpired = it => { const d = daysLeft(it.expiry); return it.qty > 0 && d !== null && d < 0; };
+const isSoon = (h, it) => { const d = daysLeft(it.expiry); return it.qty > 0 && d !== null && d >= 0 && d <= h.settings.alertDays; };
+const isLow = it => it.qty > 0 && it.min > 0 && it.qty <= it.min;
+function cmpExpiry(a, b) {
+  const ea = a.expiry || '9999-12-31', eb = b.expiry || '9999-12-31';
+  if (ea !== eb) return ea < eb ? -1 : 1;
+  return (a.addedOn || '') < (b.addedOn || '') ? -1 : 1;
+}
+function useFirstList(h) { return h.items.filter(i => i.qty > 0).sort(cmpExpiry); }
+
+/* ================= Alerts (derived from stock, never stale) ================= */
+function deriveAlerts(h) {
+  const out = [];
+  h.items.forEach(it => {
+    const d = daysLeft(it.expiry);
+    const q = fmtQty(it.qty) + ' ' + it.unit;
+    if (isOut(it)) out.push({ key: 'out:' + it.id, type: 'out', sev: 2, itemId: it.id, msg: it.name + ' is out of stock' });
+    else if (isExpired(it)) out.push({ key: 'exp:' + it.id + ':' + it.expiry, type: 'expired', sev: 3, itemId: it.id, msg: it.name + ' expired ' + (-d) + (d === -1 ? ' day' : ' days') + ' ago (' + q + ' left)' });
+    else if (isSoon(h, it)) out.push({ key: 'soon:' + it.id + ':' + it.expiry, type: 'soon', sev: d <= 1 ? 3 : 2, itemId: it.id, days: d, msg: it.name + (d === 0 ? ' expires today' : d === 1 ? ' expires tomorrow' : ' expires in ' + d + ' days') + ' (' + q + ')' });
+    if (isLow(it)) out.push({ key: 'low:' + it.id + ':' + fmtQty(it.qty), type: 'low', sev: 1, itemId: it.id, msg: it.name + ' is running low (' + q + ' left, minimum ' + fmtQty(it.min) + ')' });
+  });
+  return out.sort((a, b) => b.sev - a.sev || (a.days || 0) - (b.days || 0));
+}
+function readKeys(h, u) { return (h.read && h.read[u.id]) || []; }
+function unreadCount(h, u) { const r = readKeys(h, u); return deriveAlerts(h).filter(a => r.indexOf(a.key) < 0).length; }
+
+/* ================= Activity log ================= */
+function addLog(h, u, type, it, qty, note) {
+  h.log.unshift({ id: uid(), t: new Date().toISOString(), userId: u ? u.id : null, userName: u ? u.name : 'System', type: type, itemId: it ? it.id : null, itemName: it ? it.name : '', qty: qty || 0, unit: it ? it.unit : '', note: note || '' });
+  if (h.log.length > 600) h.log.length = 600;
+}
+function logText(e) {
+  const q = e.qty ? fmtQty(e.qty) + ' ' + e.unit + ' of ' : '';
+  switch (e.type) {
+    case 'added': return 'added ' + e.itemName + (e.qty ? ' (' + fmtQty(e.qty) + ' ' + e.unit + ')' : '');
+    case 'restocked': return 'restocked ' + e.itemName + (e.qty ? ' (' + fmtQty(e.qty) + ' ' + e.unit + ')' : '');
+    case 'consumed': return 'used ' + q + e.itemName;
+    case 'wasted': return 'threw away ' + q + e.itemName;
+    case 'edited': return 'edited ' + e.itemName;
+    case 'removed': return 'removed ' + e.itemName;
+    default: return e.note || e.type;
+  }
+}
+function itemHistory(h, it) {
+  return h.log.filter(e => e.itemId === it.id || (!e.itemId && e.itemName && e.itemName.toLowerCase() === it.name.toLowerCase()));
+}
+
+/* ================= Usage patterns, smart list ================= */
+function usedSince(h, name, days, kinds) {
+  const from = Date.now() - days * DAY, n = name.toLowerCase();
+  return h.log.reduce((s, e) => (kinds.indexOf(e.type) >= 0 && e.itemName.toLowerCase() === n && new Date(e.t).getTime() >= from) ? s + e.qty : s, 0);
+}
+function dailyUse(h, it) { return usedSince(h, it.name, 28, ['consumed']) / 28; }
+function suggestQty(h, it) {
+  const perWeek = usedSince(h, it.name, 28, ['consumed', 'wasted']) / 4;
+  let q = perWeek > 0 ? perWeek : Math.max((it.min || 0) * 2, 1);
+  return (it.unit === 'pcs' || it.unit === 'pack') ? Math.ceil(q) : Math.ceil(q * 2) / 2;
+}
+function onList(h, name) { return h.shopping.some(s => !s.done && s.name.toLowerCase() === name.toLowerCase()); }
+function autoAdd(h, it, reason) {
+  if (onList(h, it.name)) return false;
+  h.shopping.push({ id: uid(), name: it.name, qty: suggestQty(h, it), unit: it.unit, reason: reason, done: false, auto: true });
+  return true;
+}
+function generateList(h) {
+  let n = 0;
+  h.items.forEach(it => {
+    if (onList(h, it.name)) return;
+    let reason = null;
+    if (isOut(it)) reason = 'Out of stock';
+    else if (isExpired(it)) reason = 'Expired, needs replacing';
+    else if (isLow(it)) reason = 'Low stock (' + fmtQty(it.qty) + ' ' + it.unit + ' left)';
+    else { const r = dailyUse(h, it); if (r > 0 && it.qty / r < 3) reason = 'Runs out in about ' + Math.max(1, Math.round(it.qty / r)) + ' day(s) at your usual use'; }
+    if (reason) { h.shopping.push({ id: uid(), name: it.name, qty: suggestQty(h, it), unit: it.unit, reason: reason, done: false, auto: true }); n++; }
+  });
+  return n;
+}
+
+/* ================= Use / waste ================= */
+function useItem(h, u, id, amount, kind, note) {
+  const it = h.items.find(i => i.id === id);
+  if (!it) return { err: 'Item not found.' };
+  amount = Number(amount);
+  if (!(amount > 0)) return { err: 'Enter an amount above 0.' };
+  if (amount > it.qty + 1e-9) return { err: 'You only have ' + fmtQty(it.qty) + ' ' + it.unit + '.' };
+  it.qty = Math.round((it.qty - amount) * 1000) / 1000;
+  addLog(h, u, kind, it, amount, note);
+  let msg = (kind === 'wasted' ? 'Recorded waste: ' : 'Recorded use: ') + fmtQty(amount) + ' ' + it.unit + ' of ' + it.name + '.';
+  if (h.settings.autoList && (it.qty <= 0 || (it.min > 0 && it.qty <= it.min))) {
+    if (autoAdd(h, it, it.qty <= 0 ? 'Finished after use' : 'Below minimum stock')) msg += ' Added to the shopping list.';
+  }
+  save();
+  return { ok: true, msg: msg };
+}
+
+/* ================= Recipes ================= */
+function recipeIdeas(h) {
+  const stock = h.items.filter(i => i.qty > 0);
+  const res = [];
+  RECIPES.forEach(r => {
+    const found = [], missing = [];
+    r.uses.forEach(k => {
+      const it = stock.find(i => i.name.toLowerCase().indexOf(k) >= 0);
+      if (it) { if (found.indexOf(it) < 0) found.push(it); } else missing.push(k);
+    });
+    if (found.length < 2) return;
+    const urgent = found.filter(i => { const d = daysLeft(i.expiry); return d !== null && d <= h.settings.alertDays; });
+    const score = urgent.length * 3 + found.length * 0.1 - missing.length * 0.05;
+    res.push({ r: r, found: found, missing: missing, urgent: urgent, score: score });
+  });
+  return res.sort((a, b) => b.score - a.score).slice(0, 4);
+}
+
+/* ================= Sample data ================= */
+function seedData(h, u) {
+  const mk = (name, category, unit, qty, location, exp, min, added) => ({ id: uid(), name: name, category: category, unit: unit, qty: qty, location: location, expiry: exp === null ? '' : plusDays(exp), min: min, barcode: '', addedOn: plusDays(-added) });
+  h.items = [
+    mk('Milk', 'Dairy', 'L', 2, 'Fridge', 2, 1, 3),
+    mk('Curd', 'Dairy', 'pack', 1, 'Fridge', 4, 1, 2),
+    mk('Bread', 'Bakery', 'pack', 1, 'Counter', 3, 1, 2),
+    mk('Spinach', 'Vegetables', 'pack', 1, 'Fridge', 1, 0, 2),
+    mk('Paneer', 'Dairy', 'pack', 1, 'Fridge', 6, 0, 1),
+    mk('Eggs', 'Meat & eggs', 'pcs', 9, 'Fridge', 9, 4, 5),
+    mk('Tomato', 'Vegetables', 'kg', 0.8, 'Counter', 4, 0.5, 3),
+    mk('Banana', 'Fruits', 'pcs', 4, 'Counter', -1, 0, 5),
+    mk('Butter', 'Dairy', 'pack', 1, 'Fridge', 45, 1, 10),
+    mk('Basmati Rice', 'Grains & flour', 'kg', 4, 'Pantry', null, 1, 20),
+    mk('Wheat Flour (Atta)', 'Grains & flour', 'kg', 3, 'Pantry', null, 1, 20),
+    mk('Toor Dal', 'Pulses', 'kg', 1, 'Pantry', null, 0.5, 20),
+    mk('Cooking Oil', 'Oil & spices', 'L', 0.4, 'Pantry', null, 0.5, 20),
+    mk('Onion', 'Vegetables', 'kg', 0, 'Pantry', 18, 1, 12),
+    mk('Potato', 'Vegetables', 'kg', 1.5, 'Pantry', 20, 1, 8),
+    mk('Tea Powder', 'Beverages', 'pack', 1, 'Pantry', null, 1, 20),
+    mk('Apple', 'Fruits', 'pcs', 3, 'Fridge', 10, 0, 4)
+  ];
+  h.log = [];
+  let s = 7;
+  const rnd = () => { s = (s * 9301 + 49297) % 233280; return s / 233280; };
+  const used = [['Milk', 'L', 1], ['Eggs', 'pcs', 3], ['Bread', 'pack', 1], ['Tomato', 'kg', 0.5], ['Curd', 'pack', 1], ['Onion', 'kg', 0.5], ['Spinach', 'pack', 1], ['Banana', 'pcs', 2]];
+  const lost = [['Spinach', 'pack', 1], ['Bread', 'pack', 1], ['Banana', 'pcs', 2], ['Tomato', 'kg', 0.5], ['Curd', 'pack', 1]];
+  const events = [];
+  for (let d = 1; d <= 41; d++) {
+    const n = rnd() < 0.7 ? 2 : 1;
+    for (let k = 0; k < n; k++) { const x = used[Math.floor(rnd() * used.length)]; events.push({ d: d, type: 'consumed', x: x }); }
+    if (rnd() < 0.13) { const x = lost[Math.floor(rnd() * lost.length)]; events.push({ d: d, type: 'wasted', x: x }); }
+  }
+  events.forEach(ev => {
+    const t = new Date(Date.now() - ev.d * DAY - Math.floor(rnd() * 8) * 3600e3).toISOString();
+    h.log.push({ id: uid(), t: t, userId: u.id, userName: u.name, type: ev.type, itemId: null, itemName: ev.x[0], qty: ev.x[2], unit: ev.x[1], note: '' });
+  });
+  h.items.forEach(it => {
+    h.log.push({ id: uid(), t: new Date(parseD(it.addedOn).getTime() + 10 * 3600e3).toISOString(), userId: u.id, userName: u.name, type: 'added', itemId: it.id, itemName: it.name, qty: it.qty, unit: it.unit, note: '' });
+  });
+  h.log.sort((a, b) => (a.t < b.t ? 1 : -1));
+  addLog(h, u, 'seed', null, 0, 'loaded sample data');
+}
+
+/* ================= UI state ================= */
+const UI = { route: 'dashboard', modal: null, q: '', loc: 'all', stat: 'all', sort: 'expiry', authTab: 'login' };
+const appEl = document.getElementById('app');
+const toastEl = document.getElementById('toast');
+let toastTimer = null;
+function toast(msg) {
+  toastEl.textContent = msg; toastEl.classList.add('show');
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => toastEl.classList.remove('show'), 3500);
+}
+const chip = (cls, text) => '<span class="chip ' + cls + '">' + esc(text) + '</span>';
+function expChip(h, it) {
+  const d = daysLeft(it.expiry);
+  if (it.qty <= 0) return chip('gray', 'Out of stock');
+  if (d === null) return chip('gray', 'No expiry');
+  if (d < 0) return chip('red', 'Expired ' + (-d) + 'd ago');
+  if (d === 0) return chip('red', 'Today');
+  if (d === 1) return chip('red', 'Tomorrow');
+  return chip(d <= h.settings.alertDays ? 'amber' : 'green', d + ' days');
+}
+function opts(arr, sel) { return arr.map(o => '<option' + (o === sel ? ' selected' : '') + '>' + esc(o) + '</option>').join(''); }
+function field(label, name, type, extra) { return '<label class="f"><span>' + label + '</span><input name="' + name + '" type="' + type + '" ' + (extra || '') + '></label>'; }
+
+/* ================= Auth views ================= */
+function viewAuth() {
+  const reg = UI.authTab === 'register';
+  return '<div class="auth"><div class="auth-card">' +
+    '<p class="brand-big">UseFirst</p>' +
+    '<h1>' + (reg ? 'Create your account' : 'Welcome back') + '</h1>' +
+    '<p class="muted">Track what is in your kitchen, use the oldest food first, and never forget what to buy.</p>' +
+    '<div class="seg" role="group" aria-label="Sign in or create account">' +
+      '<button type="button" class="' + (reg ? '' : 'on') + '" aria-pressed="' + (!reg) + '" data-act="authTab" data-tab="login">Sign in</button>' +
+      '<button type="button" class="' + (reg ? 'on' : '') + '" aria-pressed="' + reg + '" data-act="authTab" data-tab="register">Create account</button>' +
+    '</div>' +
+    '<form data-form="' + (reg ? 'register' : 'login') + '" novalidate>' +
+      (reg ? field('Your name', 'name', 'text', 'autocomplete="name" required') : '') +
+      field('Email', 'email', 'email', 'autocomplete="email" required') +
+      field('Password', 'password', 'password', 'autocomplete="' + (reg ? 'new-password' : 'current-password') + '" required' + (reg ? ' minlength="6"' : '')) +
+      '<p class="err" role="alert"></p>' +
+      '<button class="btn primary wide" type="submit">' + (reg ? 'Create account' : 'Sign in') + '</button>' +
+    '</form>' +
+    '<p class="fineprint">Prototype for a case study. Accounts and data are stored only in this browser. Create one account per person, then use a household join code to share a kitchen on the same device.</p>' +
+  '</div></div>';
+}
+function viewSetup(u) {
+  return '<div class="auth"><div class="auth-card wide-card">' +
+    '<p class="brand-big">UseFirst</p>' +
+    '<h1>Hi ' + esc(u.name.split(' ')[0]) + ', set up your household</h1>' +
+    '<p class="muted">A household is the shared kitchen that you track together.</p>' +
+    '<div class="two">' +
+      '<form data-form="createHH" novalidate><h2>Create a household</h2><p class="muted">You become the Home Manager.</p>' +
+        field('Household name', 'name', 'text', 'placeholder="e.g. Bhaldar family" required') +
+        '<p class="err" role="alert"></p><button class="btn primary wide" type="submit">Create household</button></form>' +
+      '<form data-form="joinHH" novalidate><h2>Join with a code</h2><p class="muted">Ask the Home Manager for the 6-character code.</p>' +
+        field('Join code', 'code', 'text', 'placeholder="e.g. K7M2QX" maxlength="6" autocapitalize="characters" required') +
+        '<p class="err" role="alert"></p><button class="btn wide" type="submit">Join household</button></form>' +
+    '</div>' +
+    '<p class="center"><button type="button" class="link-btn" data-act="logout">Sign out</button></p>' +
+  '</div></div>';
+}
+
+/* ================= Shell ================= */
+function viewShell(u, h) {
+  const P = perms(u);
+  const nav = [['dashboard', 'Dashboard'], ['inventory', 'Inventory'], ['usefirst', 'Use-First'], ['shopping', 'Shopping list'], ['alerts', 'Alerts']];
+  if (P.reports) nav.push(['reports', 'Reports']);
+  if (P.admin) nav.push(['household', 'Household']);
+  if (!nav.some(n => n[0] === UI.route)) UI.route = 'dashboard';
+  const un = unreadCount(h, u);
+  const navHtml = nav.map(n => '<button type="button" class="nav-btn' + (UI.route === n[0] ? ' on' : '') + '" data-act="nav" data-route="' + n[0] + '"' + (UI.route === n[0] ? ' aria-current="page"' : '') + '>' + n[1] + (n[0] === 'alerts' && un ? '<span class="badge" aria-label="' + un + ' unread">' + un + '</span>' : '') + '</button>').join('');
+  const views = { dashboard: viewDashboard, inventory: viewInventory, usefirst: viewUseFirst, shopping: viewShopping, alerts: viewAlerts, reports: viewReports, household: viewHousehold };
+  return '<div class="shell">' +
+    '<aside class="side"><p class="brand">UseFirst</p><nav aria-label="Main" class="side-nav">' + navHtml + '</nav></aside>' +
+    '<div class="main">' +
+      '<header class="bar"><div class="bar-l"><strong>' + esc(h.name) + '</strong><span class="role">' + ROLE_LABEL[u.role] + '</span></div>' +
+      '<div class="bar-r"><span class="who">' + esc(u.name) + '</span><button type="button" class="small-btn" data-act="logout">Sign out</button></div></header>' +
+      '<main class="view" id="view">' + views[UI.route](u, h) + '</main>' +
+    '</div>' +
+    '<nav class="bottom" aria-label="Main (mobile)">' + navHtml + '</nav>' +
+  '</div>';
+}
+
+/* ================= Item rows ================= */
+function itemRow(h, u, it, compact) {
+  const P = perms(u), a = [];
+  if (P.use && it.qty > 0) {
+    a.push('<button type="button" class="small-btn" data-act="openUse" data-id="' + it.id + '" data-kind="consumed">Use</button>');
+    a.push('<button type="button" class="small-btn ghost" data-act="openUse" data-id="' + it.id + '" data-kind="wasted">Waste</button>');
+  }
+  if (P.inv && !compact) {
+    a.push('<button type="button" class="small-btn ghost" data-act="openEdit" data-id="' + it.id + '" aria-label="Edit ' + esc(it.name) + '">Edit</button>');
+    a.push('<button type="button" class="small-btn ghost danger" data-act="askDelete" data-id="' + it.id + '" aria-label="Remove ' + esc(it.name) + '">Remove</button>');
+  }
+  return '<li class="irow"><div class="iname"><button type="button" class="linklike" data-act="detail" data-id="' + it.id + '">' + esc(it.name) + '</button>' +
+    '<small>' + esc(it.category) + ' · ' + esc(it.location) + (it.expiry && !compact ? ' · ' + fmtDate(it.expiry) : '') + '</small></div>' +
+    '<div class="iqty">' + fmtQty(it.qty) + ' ' + esc(it.unit) + '</div>' +
+    '<div class="ichips">' + expChip(h, it) + (isLow(it) ? chip('amber', 'Low stock') : '') + '</div>' +
+    '<div class="iact">' + a.join('') + '</div></li>';
+}
+
+/* ================= Dashboard ================= */
+function monthCounts(h) {
+  const from = Date.now() - 30 * DAY; let c = 0, w = 0;
+  h.log.forEach(e => { if (new Date(e.t).getTime() >= from) { if (e.type === 'consumed') c++; else if (e.type === 'wasted') w++; } });
+  return { c: c, w: w };
+}
+function emptyState(u) {
+  const P = perms(u);
+  return '<div class="empty-card"><h2>Your kitchen is empty</h2><p class="muted">' + (P.inv ? 'Add your first item with a barcode or by hand, or load sample data to explore the app.' : 'Ask the Home Manager to add items.') + '</p>' +
+    (P.inv ? '<div class="row-gap"><button type="button" class="btn primary" data-act="openAdd">Add first item</button><button type="button" class="btn" data-act="seed">Load sample data</button></div>' : '') + '</div>';
+}
+function viewDashboard(u, h) {
+  const P = perms(u);
+  const head = '<div class="page-head"><h1>Dashboard</h1>' + (P.inv ? '<button type="button" class="btn primary" data-act="openAdd">Add item</button>' : '') + '</div>';
+  if (!h.items.length) return head + emptyState(u);
+  const inStock = h.items.filter(i => i.qty > 0).length;
+  const soon = h.items.filter(i => isSoon(h, i)).length;
+  const exp = h.items.filter(isExpired).length;
+  const low = h.items.filter(i => isLow(i) || isOut(i)).length;
+  const mc = monthCounts(h);
+  const rate = (mc.c + mc.w) ? Math.round(mc.w / (mc.c + mc.w) * 100) : 0;
+  const first = useFirstList(h).slice(0, 5);
+  const al = deriveAlerts(h).slice(0, 5);
+  return head +
+    '<div class="stats">' +
+      stat('In stock', inStock, 'items on hand', '') +
+      stat('Expiring soon', soon, 'within ' + h.settings.alertDays + ' days', soon ? 'amber' : '') +
+      stat('Expired', exp, 'still in the kitchen', exp ? 'red' : '') +
+      stat('Low or out', low, 'need restocking', low ? 'amber' : '') +
+    '</div>' +
+    '<div class="grid2">' +
+      '<section class="card"><div class="card-h"><h2>Use these first</h2><button type="button" class="link-btn" data-act="nav" data-route="usefirst">See all</button></div><ul class="ilist">' + first.map(i => itemRow(h, u, i, true)).join('') + '</ul></section>' +
+      '<section class="card"><div class="card-h"><h2>Needs attention</h2><button type="button" class="link-btn" data-act="nav" data-route="alerts">All alerts</button></div>' +
+        (al.length ? '<ul class="alist">' + al.map(a => alertRow(a)).join('') + '</ul>' : '<p class="muted">Nothing needs attention. Nice.</p>') + '</section>' +
+    '</div>' +
+    '<section class="card"><h2>Last 30 days</h2><p class="big-line"><strong>' + mc.c + '</strong> times used, <strong>' + mc.w + '</strong> times thrown away. ' + (mc.c + mc.w ? 'Waste rate: <strong>' + rate + '%</strong>.' : '') + '</p>' + (P.reports ? '<button type="button" class="link-btn" data-act="nav" data-route="reports">Open reports</button>' : '') + '</section>';
+}
+function stat(label, n, sub, cls) { return '<div class="stat ' + cls + '"><p class="stat-l">' + label + '</p><p class="stat-n">' + n + '</p><p class="stat-s">' + sub + '</p></div>'; }
+const ALERT_LABEL = { expired: ['red', 'Expired'], soon: ['amber', 'Expires soon'], low: ['amber', 'Low stock'], out: ['gray', 'Out of stock'] };
+function alertRow(a, unread) {
+  const l = ALERT_LABEL[a.type];
+  return '<li class="arow' + (unread ? ' unread' : '') + '">' + chip(l[0], l[1]) + '<span class="amsg">' + esc(a.msg) + '</span></li>';
+}
+
+/* ================= Inventory ================= */
+function filteredItems(h) {
+  let list = h.items.slice();
+  const q = UI.q.trim().toLowerCase();
+  if (q) list = list.filter(i => (i.name + ' ' + i.category + ' ' + i.location + ' ' + (i.barcode || '')).toLowerCase().indexOf(q) >= 0);
+  if (UI.loc !== 'all') list = list.filter(i => i.location === UI.loc);
+  const f = { all: () => true, soon: i => isSoon(h, i), expired: isExpired, low: isLow, out: isOut }[UI.stat] || (() => true);
+  list = list.filter(f);
+  const s = UI.sort;
+  list.sort((a, b) => s === 'name' ? a.name.localeCompare(b.name) : s === 'qty' ? a.qty - b.qty : s === 'added' ? ((b.addedOn || '') < (a.addedOn || '') ? -1 : 1) : cmpExpiry(a, b));
+  return list;
+}
+function invListHtml(h, u) {
+  const list = filteredItems(h);
+  if (!list.length) return '<p class="muted pad">No items match.</p>';
+  return '<ul class="ilist">' + list.map(i => itemRow(h, u, i, false)).join('') + '</ul>';
+}
+function viewInventory(u, h) {
+  const P = perms(u);
+  const head = '<div class="page-head"><h1>Inventory</h1>' + (P.inv ? '<button type="button" class="btn primary" data-act="openAdd">Add item</button>' : '') + '</div>';
+  if (!h.items.length) return head + emptyState(u);
+  return head +
+    '<div class="toolbar">' +
+      '<label class="f grow"><span>Search</span><input id="q" type="search" placeholder="Name, category, barcode" value="' + esc(UI.q) + '"></label>' +
+      '<label class="f"><span>Place</span><select id="loc"><option value="all">All places</option>' + LOCATIONS.map(l => '<option' + (UI.loc === l ? ' selected' : '') + '>' + l + '</option>').join('') + '</select></label>' +
+      '<label class="f"><span>Show</span><select id="stat">' + [['all', 'Everything'], ['soon', 'Expiring soon'], ['expired', 'Expired'], ['low', 'Low stock'], ['out', 'Out of stock']].map(o => '<option value="' + o[0] + '"' + (UI.stat === o[0] ? ' selected' : '') + '>' + o[1] + '</option>').join('') + '</select></label>' +
+      '<label class="f"><span>Sort by</span><select id="sort">' + [['expiry', 'Expiry (first out)'], ['name', 'Name'], ['qty', 'Quantity'], ['added', 'Recently added']].map(o => '<option value="' + o[0] + '"' + (UI.sort === o[0] ? ' selected' : '') + '>' + o[1] + '</option>').join('') + '</select></label>' +
+    '</div>' +
+    '<section class="card flush" id="invList">' + invListHtml(h, u) + '</section>';
+}
+
+/* ================= Use-First ================= */
+function viewUseFirst(u, h) {
+  const list = useFirstList(h);
+  const ideas = recipeIdeas(h);
+  const P = perms(u);
+  return '<div class="page-head"><h1>Use-First list</h1></div>' +
+    '<p class="muted lead">Food that expires earliest comes first (first-expired, first-out). Items with no expiry date come last.</p>' +
+    (list.length ? '<section class="card flush"><ol class="ranked">' + list.map((it, i) => '<li class="rank-row"><span class="rank">' + (i + 1) + '</span><ul class="ilist inner">' + itemRow(h, u, it, true) + '</ul></li>').join('') + '</ol></section>' : (h.items.length ? '<p class="muted">Everything is used up.</p>' : emptyState(u))) +
+    '<h2 class="sec">Recipe ideas</h2>' +
+    (ideas.length ? '<div class="recipes">' + ideas.map(x => '<article class="card recipe"><h3>' + esc(x.r.name) + '</h3><p class="muted small">' + x.r.time + ' min</p>' +
+      '<p>' + (x.urgent.length ? '<strong>Uses up:</strong> ' + x.urgent.map(i => esc(i.name)).join(', ') : '<strong>Uses:</strong> ' + x.found.map(i => esc(i.name)).join(', ')) + '</p>' +
+      (x.missing.length ? '<p class="muted small">Also needs: ' + x.missing.map(esc).join(', ') + '</p>' : '') +
+      '<p class="small">' + esc(x.r.tip) + '</p></article>').join('') + '</div>' : '<p class="muted">Add a few more items and recipe ideas will appear here.</p>');
+}
+
+/* ================= Shopping ================= */
+function viewShopping(u, h) {
+  const P = perms(u);
+  const pending = h.shopping.filter(s => !s.done), done = h.shopping.filter(s => s.done);
+  const row = s => '<li class="srow' + (s.done ? ' done' : '') + '"><label class="chk"><input type="checkbox" data-act="toggleShop" data-id="' + s.id + '"' + (s.done ? ' checked' : '') + (P.list ? '' : ' disabled') + '><span class="sname">' + esc(s.name) + '</span></label>' +
+    (P.list && !s.done ? '<input class="sqty" type="number" min="0" step="any" value="' + fmtQty(s.qty) + '" data-shopqty="' + s.id + '" aria-label="Quantity of ' + esc(s.name) + '"> <span class="unit">' + esc(s.unit) + '</span>' : '<span class="unit">' + fmtQty(s.qty) + ' ' + esc(s.unit) + '</span>') +
+    '<span class="sreason">' + esc(s.reason || '') + '</span>' +
+    '<span class="iact">' + (P.list && !s.done ? '<button type="button" class="small-btn" data-act="bought" data-id="' + s.id + '">Bought</button>' : '') + (P.list ? '<button type="button" class="small-btn ghost danger" data-act="delShop" data-id="' + s.id + '" aria-label="Remove ' + esc(s.name) + ' from list">Remove</button>' : '') + '</span></li>';
+  return '<div class="page-head"><h1>Shopping list</h1><div class="row-gap">' +
+      (P.list ? '<button type="button" class="btn primary" data-act="genList">Build smart list</button>' : '') +
+      (pending.length ? '<button type="button" class="btn" data-act="copyList">Copy list</button>' : '') + '</div></div>' +
+    '<p class="muted lead">The smart list adds items that are out, low, expired, or about to run out at your usual pace. Finished items are added automatically when you record use.</p>' +
+    (P.list ? '<form class="card inline-form" data-form="shopAdd" novalidate>' + field('Item', 'name', 'text', 'placeholder="Add something else" required') + field('Qty', 'qty', 'number', 'min="0" step="any" value="1" required') +
+      '<label class="f"><span>Unit</span><select name="unit">' + opts(UNITS, 'pcs') + '</select></label><button class="btn" type="submit">Add</button><p class="err" role="alert"></p></form>' : '') +
+    '<section class="card flush">' + (pending.length ? '<ul class="slist">' + pending.map(row).join('') + '</ul>' : '<p class="muted pad">Nothing to buy right now.</p>') + '</section>' +
+    (done.length ? '<div class="card-h pad-top"><h2>Bought</h2>' + (P.list ? '<button type="button" class="link-btn" data-act="clearDone">Clear bought</button>' : '') + '</div><section class="card flush"><ul class="slist">' + done.map(row).join('') + '</ul></section>' : '');
+}
+
+/* ================= Alerts ================= */
+function viewAlerts(u, h) {
+  const al = deriveAlerts(h), r = readKeys(h, u);
+  const unread = al.filter(a => r.indexOf(a.key) < 0).length;
+  return '<div class="page-head"><h1>Alerts</h1>' + (unread ? '<button type="button" class="btn" data-act="markRead">Mark all read</button>' : '') + '</div>' +
+    '<p class="muted lead">Alerts update by themselves from your stock. Expiry alerts start ' + h.settings.alertDays + ' days before the date.' + (perms(u).admin ? ' You can change this in Household settings.' : '') + '</p>' +
+    (al.length ? '<section class="card flush"><ul class="alist full">' + al.map(a => alertRow(a, r.indexOf(a.key) < 0)).join('') + '</ul></section>' : '<p class="muted">No alerts. Everything is fresh and stocked.</p>');
+}
+
+/* ================= Reports ================= */
+function hbar(label, n, max, cls) {
+  return '<div class="hb"><span class="hl">' + esc(label) + '</span><div class="ht"><div class="hf ' + (cls || '') + '" style="width:' + (max ? Math.round(n / max * 100) : 0) + '%"></div></div><span class="hn">' + n + '</span></div>';
+}
+function groupCount(items, fn) { const m = {}; items.forEach(i => { const k = fn(i); m[k] = (m[k] || 0) + 1; }); return Object.keys(m).map(k => [k, m[k]]).sort((a, b) => b[1] - a[1]); }
+function viewReports(u, h) {
+  if (!h.items.length && !h.log.length) return '<div class="page-head"><h1>Reports</h1></div>' + emptyState(u);
+  const mc = monthCounts(h), rate = (mc.c + mc.w) ? Math.round(mc.w / (mc.c + mc.w) * 100) : 0;
+  const weeks = [];
+  for (let i = 5; i >= 0; i--) {
+    const end = startOfToday().getTime() + DAY - i * 7 * DAY, start = end - 7 * DAY; let c = 0, w = 0;
+    h.log.forEach(e => { const t = new Date(e.t).getTime(); if (t >= start && t < end) { if (e.type === 'consumed') c++; else if (e.type === 'wasted') w++; } });
+    weeks.push({ label: new Date(start).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }), c: c, w: w });
+  }
+  const wmax = Math.max.apply(null, [1].concat(weeks.map(x => Math.max(x.c, x.w))));
+  const stock = h.items.filter(i => i.qty > 0);
+  const buckets = [['Expired', stock.filter(isExpired).length, 'red'], ['0 to 3 days', stock.filter(i => { const d = daysLeft(i.expiry); return d !== null && d >= 0 && d <= 3; }).length, 'amber'], ['4 to 7 days', stock.filter(i => { const d = daysLeft(i.expiry); return d !== null && d >= 4 && d <= 7; }).length, ''], ['8 to 30 days', stock.filter(i => { const d = daysLeft(i.expiry); return d !== null && d >= 8 && d <= 30; }).length, ''], ['Over 30 days', stock.filter(i => { const d = daysLeft(i.expiry); return d !== null && d > 30; }).length, ''], ['No expiry date', stock.filter(i => !i.expiry).length, '']];
+  const bmax = Math.max.apply(null, [1].concat(buckets.map(b => b[1])));
+  const byLoc = groupCount(stock, i => i.location), byCat = groupCount(stock, i => i.category);
+  const from90 = Date.now() - 90 * DAY, wasted = {};
+  h.log.forEach(e => { if (e.type === 'wasted' && new Date(e.t).getTime() >= from90) wasted[e.itemName] = (wasted[e.itemName] || 0) + 1; });
+  const topWaste = Object.keys(wasted).map(k => [k, wasted[k]]).sort((a, b) => b[1] - a[1]).slice(0, 5);
+  const from28 = Date.now() - 28 * DAY, use = {};
+  h.log.forEach(e => { if (e.type === 'consumed' && new Date(e.t).getTime() >= from28) { const k = e.itemName + '|' + e.unit; use[k] = (use[k] || 0) + e.qty; } });
+  const usage = Object.keys(use).map(k => { const p = k.split('|'); return [p[0], use[k] / 4, p[1]]; }).sort((a, b) => b[1] - a[1]).slice(0, 6);
+  return '<div class="page-head"><h1>Reports</h1></div>' +
+    '<div class="stats">' + stat('Times used', mc.c, 'last 30 days', '') + stat('Times thrown away', mc.w, 'last 30 days', mc.w ? 'amber' : '') + stat('Waste rate', rate + '%', 'thrown away out of all use', rate > 25 ? 'red' : '') + stat('Items tracked', h.items.length, stock.length + ' in stock', '') + '</div>' +
+    '<section class="card"><h2>Used and thrown away, by week</h2><div class="legend"><span><i class="sw c"></i>Used</span><span><i class="sw w"></i>Thrown away</span></div>' +
+      '<div class="weekly" role="img" aria-label="Weekly counts: ' + weeks.map(x => x.label + ' used ' + x.c + ', thrown away ' + x.w).join('; ') + '">' +
+      weeks.map(x => '<div class="wk"><div class="bars"><div class="cbar c" style="height:' + Math.round(x.c / wmax * 100) + '%"><span>' + x.c + '</span></div><div class="cbar w" style="height:' + Math.round(x.w / wmax * 100) + '%"><span>' + x.w + '</span></div></div><small>' + x.label + '</small></div>').join('') + '</div></section>' +
+    '<div class="grid2">' +
+      '<section class="card"><h2>Expiry outlook</h2>' + buckets.map(b => hbar(b[0], b[1], bmax, b[2])).join('') + '</section>' +
+      '<section class="card"><h2>Most thrown away (90 days)</h2>' + (topWaste.length ? topWaste.map(t => hbar(t[0], t[1], topWaste[0][1], 'red')).join('') : '<p class="muted">No waste recorded.</p>') + '</section>' +
+      '<section class="card"><h2>Stock by place</h2>' + (byLoc.length ? byLoc.map(t => hbar(t[0], t[1], byLoc[0][1])).join('') : '<p class="muted">No stock.</p>') + '</section>' +
+      '<section class="card"><h2>Stock by category</h2>' + (byCat.length ? byCat.map(t => hbar(t[0], t[1], byCat[0][1])).join('') : '<p class="muted">No stock.</p>') + '</section>' +
+    '</div>' +
+    '<section class="card"><h2>Typical use per week</h2>' + (usage.length ? '<ul class="plain-list">' + usage.map(x => '<li><strong>' + esc(x[0]) + '</strong> about ' + fmtQty(x[1]) + ' ' + esc(x[2]) + ' per week</li>').join('') + '</ul>' : '<p class="muted">Record some use and patterns will show here. The smart shopping list uses the same numbers.</p>') + '</section>';
+}
+
+/* ================= Household (manager) ================= */
+function viewHousehold(u, h) {
+  const members = DB.users.filter(x => x.householdId === h.id);
+  const s = h.settings;
+  return '<div class="page-head"><h1>Household</h1></div>' +
+    '<section class="card"><h2>Join code</h2><p class="muted">Share this code so other people can join <strong>' + esc(h.name) + '</strong>.</p><p class="code"><span>' + esc(h.code) + '</span> <button type="button" class="small-btn" data-act="copyCode">Copy</button></p></section>' +
+    '<section class="card"><h2>Members and roles</h2><div class="tablewrap"><table><thead><tr><th>Name</th><th>Email</th><th>Role</th><th></th></tr></thead><tbody>' +
+      members.map(m => '<tr><td>' + esc(m.name) + (m.id === u.id ? ' <span class="muted">(you)</span>' : '') + '</td><td>' + esc(m.email) + '</td><td>' +
+        (m.id === u.id ? ROLE_LABEL[m.role] : '<select data-role-user="' + m.id + '" aria-label="Role for ' + esc(m.name) + '">' + Object.keys(ROLE_LABEL).map(r => '<option value="' + r + '"' + (m.role === r ? ' selected' : '') + '>' + ROLE_LABEL[r] + '</option>').join('') + '</select>') +
+        '</td><td>' + (m.id === u.id ? '' : '<button type="button" class="small-btn ghost danger" data-act="askRemoveMember" data-id="' + m.id + '">Remove</button>') + '</td></tr>').join('') +
+    '</tbody></table></div>' +
+    '<p class="muted small">Home Manager: full access. Household Member: can view and record use. Viewer: view only.</p></section>' +
+    '<section class="card"><h2>Alert and data settings</h2><div class="settings">' +
+      '<label class="f"><span>Warn this many days before expiry</span><input type="number" min="1" max="14" value="' + s.alertDays + '" data-setting="alertDays"></label>' +
+      '<label class="f"><span>Barcode data source</span><select data-setting="source"><option value="catalog"' + (s.source === 'catalog' ? ' selected' : '') + '>Built-in sample catalog</option><option value="manual"' + (s.source === 'manual' ? ' selected' : '') + '>Manual entry only</option></select></label>' +
+      '<label class="chk"><input type="checkbox" data-setting="autoList"' + (s.autoList ? ' checked' : '') + '><span>Add finished or low items to the shopping list automatically</span></label>' +
+    '</div></section>' +
+    '<section class="card"><h2>Data tools</h2><div class="row-gap"><button type="button" class="btn" data-act="seed">Load sample data</button><button type="button" class="btn danger-btn" data-act="askClear">Clear inventory</button></div></section>' +
+    '<section class="card"><h2>Activity log</h2>' + (h.log.length ? '<ul class="log">' + h.log.slice(0, 40).map(e => '<li><time>' + fmtTime(e.t) + '</time><span><strong>' + esc(e.userName) + '</strong> ' + esc(logText(e)) + '</span></li>').join('') + '</ul>' : '<p class="muted">No activity yet.</p>') + '</section>';
+}
+
+/* ================= Modals ================= */
+function viewModal(u, h) {
+  const m = UI.modal; let title = '', body = '';
+  if (m.type === 'item') {
+    const it = m.id ? h.items.find(i => i.id === m.id) : null;
+    const v = it || m.pre || { category: 'Other', unit: 'pcs', location: 'Fridge', qty: 1, min: 0 };
+    title = it ? 'Edit item' : 'Add item';
+    body = '<form data-form="item" novalidate>' +
+      '<div class="f"><span>Barcode (optional)</span><div class="bar-row"><input name="barcode" type="text" inputmode="numeric" value="' + esc(v.barcode || '') + '" placeholder="Type or scan, then press Enter"><button type="button" class="small-btn" data-act="lookup">Look up</button></div>' +
+      '<p class="hint" id="lookupMsg">' + (h.settings.source === 'manual' ? 'Barcode lookup is off. Enter details by hand.' : 'Try 8900000000011 (Milk) or 8900000000059 (Eggs).') + '</p></div>' +
+      field('Name', 'name', 'text', 'required value="' + esc(v.name || '') + '"') +
+      '<div class="two-s">' + field('Quantity', 'qty', 'number', 'min="0" step="any" required value="' + fmtQty(v.qty == null ? 1 : v.qty) + '"') +
+      '<label class="f"><span>Unit</span><select name="unit">' + opts(UNITS, v.unit) + '</select></label></div>' +
+      '<div class="two-s"><label class="f"><span>Category</span><select name="category">' + opts(CATEGORIES, v.category) + '</select></label>' +
+      '<label class="f"><span>Stored in</span><select name="location">' + opts(LOCATIONS, v.location) + '</select></label></div>' +
+      '<div class="two-s">' + field('Expiry date (leave empty if none)', 'expiry', 'date', 'value="' + esc(v.expiry || '') + '"') + field('Alert when at or below', 'min', 'number', 'min="0" step="any" value="' + fmtQty(v.min || 0) + '"') + '</div>' +
+      '<p class="err" role="alert"></p><div class="m-actions"><button type="button" class="btn" data-act="closeModal">Cancel</button><button type="submit" class="btn primary">' + (it ? 'Save changes' : 'Add to kitchen') + '</button></div></form>';
+  } else if (m.type === 'use') {
+    const it = h.items.find(i => i.id === m.id); if (!it) { UI.modal = null; return ''; }
+    const w = m.kind === 'wasted';
+    title = (w ? 'Throw away ' : 'Use ') + it.name;
+    body = '<form data-form="use" novalidate><p class="muted">You have <strong>' + fmtQty(it.qty) + ' ' + esc(it.unit) + '</strong>.</p>' +
+      '<div class="f"><span>How much? (' + esc(it.unit) + ')</span><div class="bar-row"><input name="amount" type="number" min="0" step="any" required value="' + fmtQty(Math.min(1, it.qty)) + '"><button type="button" class="small-btn" data-act="useAll" data-max="' + fmtQty(it.qty) + '">All</button></div></div>' +
+      '<p class="err" role="alert"></p><div class="m-actions"><button type="button" class="btn" data-act="closeModal">Cancel</button><button type="submit" class="btn ' + (w ? 'danger-btn' : 'primary') + '">' + (w ? 'Record waste' : 'Record use') + '</button></div></form>';
+  } else if (m.type === 'detail') {
+    const it = h.items.find(i => i.id === m.id); if (!it) { UI.modal = null; return ''; }
+    const hist = itemHistory(h, it).slice(0, 12);
+    title = it.name;
+    body = '<dl class="facts"><dt>Quantity</dt><dd>' + fmtQty(it.qty) + ' ' + esc(it.unit) + '</dd><dt>Stored in</dt><dd>' + esc(it.location) + '</dd><dt>Category</dt><dd>' + esc(it.category) + '</dd>' +
+      '<dt>Expiry</dt><dd>' + (it.expiry ? fmtDate(it.expiry) + ' ' + expChip(h, it) : 'No expiry date') + '</dd><dt>Alert at or below</dt><dd>' + fmtQty(it.min || 0) + ' ' + esc(it.unit) + '</dd>' + (it.barcode ? '<dt>Barcode</dt><dd>' + esc(it.barcode) + '</dd>' : '') + '</dl>' +
+      '<h3>History</h3>' + (hist.length ? '<ul class="log">' + hist.map(e => '<li><time>' + fmtTime(e.t) + '</time><span><strong>' + esc(e.userName) + '</strong> ' + esc(logText(e)) + '</span></li>').join('') + '</ul>' : '<p class="muted">No history yet.</p>') +
+      '<div class="m-actions"><button type="button" class="btn" data-act="closeModal">Close</button>' + (perms(u).inv ? '<button type="button" class="btn primary" data-act="openEdit" data-id="' + it.id + '">Edit</button>' : '') + '</div>';
+  } else if (m.type === 'confirm') {
+    title = m.title;
+    body = '<p>' + esc(m.text) + '</p><div class="m-actions"><button type="button" class="btn" data-act="closeModal">Cancel</button><button type="button" class="btn danger-btn" data-act="confirmYes">' + esc(m.label) + '</button></div>';
+  }
+  return '<div class="overlay" data-act="overlayClose"><div class="modal" role="dialog" aria-modal="true" aria-labelledby="mt"><h2 id="mt">' + esc(title) + '</h2>' + body + '</div></div>';
+}
+
+/* ================= Render ================= */
+function render() {
+  const u = curUser(); let html, h = null;
+  if (!u) html = viewAuth();
+  else { h = curHH(u); html = h ? viewShell(u, h) : viewSetup(u); }
+  if (UI.modal && u && h) html += viewModal(u, h);
+  appEl.innerHTML = html;
+  if (UI.modal) { const el = appEl.querySelector('.modal input:not([type=hidden]), .modal select, .modal button'); if (el) el.focus(); }
+}
+function refreshInv() { const u = curUser(), h = curHH(u), box = document.getElementById('invList'); if (box && h) box.innerHTML = invListHtml(h, u); }
+function ferr(f, msg) { const p = f.querySelector('.err'); if (p) p.textContent = msg; }
+function joinCode() { const c = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; let s = ''; for (let i = 0; i < 6; i++) s += c[Math.floor(Math.random() * c.length)]; return s; }
+
+/* ================= Forms ================= */
+const forms = {
+  async register(f) {
+    const fd = new FormData(f), name = (fd.get('name') || '').trim(), email = (fd.get('email') || '').trim().toLowerCase(), pw = fd.get('password') || '';
+    if (!name) return ferr(f, 'Please enter your name.');
+    if (!/^\S+@\S+\.\S+$/.test(email)) return ferr(f, 'Please enter a valid email.');
+    if (pw.length < 6) return ferr(f, 'Use a password of at least 6 characters.');
+    if (DB.users.some(x => x.email === email)) return ferr(f, 'An account with this email already exists. Try signing in.');
+    const salt = uid(), hash = await sha(salt + pw);
+    const user = { id: uid(), name: name, email: email, salt: salt, hash: hash, householdId: null, role: null };
+    DB.users.push(user); DB.session = user.id; save(); UI.route = 'dashboard'; render();
+  },
+  async login(f) {
+    const fd = new FormData(f), email = (fd.get('email') || '').trim().toLowerCase(), pw = fd.get('password') || '';
+    const user = DB.users.find(x => x.email === email);
+    if (!user || (await sha(user.salt + pw)) !== user.hash) return ferr(f, 'Email or password is not correct.');
+    DB.session = user.id; const h = curHH(user); if (h) addLog(h, user, 'login', null, 0, 'signed in'); save(); UI.route = 'dashboard'; render();
+  },
+  createHH(f) {
+    const u = curUser(), name = (new FormData(f).get('name') || '').trim();
+    if (!name) return ferr(f, 'Give your household a name.');
+    const h = { id: uid(), name: name, code: joinCode(), settings: { alertDays: 3, autoList: true, source: 'catalog' }, items: [], log: [], shopping: [], read: {} };
+    DB.households.push(h); u.householdId = h.id; u.role = 'manager'; addLog(h, u, 'member', null, 0, 'created the household'); save(); render();
+  },
+  joinHH(f) {
+    const u = curUser(), code = (new FormData(f).get('code') || '').trim().toUpperCase();
+    const h = DB.households.find(x => x.code === code);
+    if (!h) return ferr(f, 'No household found with that code. Codes work for accounts made in this browser.');
+    u.householdId = h.id; u.role = 'member'; addLog(h, u, 'member', null, 0, 'joined the household'); save(); render();
+  },
+  item(f) {
+    const u = curUser(), h = curHH(u); if (!perms(u).inv) return;
+    const fd = new FormData(f), name = (fd.get('name') || '').trim(), qty = Number(fd.get('qty')), min = Number(fd.get('min') || 0);
+    if (!name) return ferr(f, 'Enter a name for the item.');
+    if (!(qty >= 0) || fd.get('qty') === '') return ferr(f, 'Enter a quantity of 0 or more.');
+    if (!(min >= 0)) return ferr(f, 'Alert level cannot be negative.');
+    const rec = { name: name, category: fd.get('category'), barcode: (fd.get('barcode') || '').trim(), qty: qty, unit: fd.get('unit'), expiry: fd.get('expiry') || '', location: fd.get('location'), min: min };
+    const m = UI.modal; let msg;
+    if (m.id) {
+      const it = h.items.find(i => i.id === m.id); Object.assign(it, rec); addLog(h, u, 'edited', it, 0); msg = name + ' updated.';
+    } else {
+      const out = h.items.find(i => i.qty <= 0 && i.name.toLowerCase() === name.toLowerCase());
+      if (out) { Object.assign(out, rec, { addedOn: plusDays(0) }); addLog(h, u, 'restocked', out, qty); }
+      else { const it = Object.assign({ id: uid(), addedOn: plusDays(0) }, rec); h.items.push(it); addLog(h, u, 'added', it, qty); }
+      msg = name + ' added.';
+      if (m.shopId) h.shopping = h.shopping.filter(s => s.id !== m.shopId);
+    }
+    save(); UI.modal = null; render(); toast(msg);
+  },
+  use(f) {
+    const u = curUser(), h = curHH(u); if (!perms(u).use) return;
+    const m = UI.modal, r = useItem(h, u, m.id, new FormData(f).get('amount'), m.kind, '');
+    if (r.err) return ferr(f, r.err);
+    UI.modal = null; render(); toast(r.msg);
+  },
+  shopAdd(f) {
+    const u = curUser(), h = curHH(u); if (!perms(u).list) return;
+    const fd = new FormData(f), name = (fd.get('name') || '').trim(), qty = Number(fd.get('qty'));
+    if (!name) return ferr(f, 'Enter an item name.');
+    if (!(qty > 0)) return ferr(f, 'Enter a quantity above 0.');
+    if (onList(h, name)) return ferr(f, name + ' is already on the list.');
+    h.shopping.push({ id: uid(), name: name, qty: qty, unit: fd.get('unit'), reason: 'Added by ' + u.name, done: false, auto: false });
+    save(); render(); toast(name + ' added to the list.');
+  }
+};
+
+/* ================= Click actions ================= */
+function copyText(text, okMsg) {
+  const fallback = () => toast('Copy is blocked here. Select the text and copy it by hand.');
+  try { navigator.clipboard.writeText(text).then(() => toast(okMsg), fallback); } catch (e) { fallback(); }
+}
+const confirms = {
+  deleteItem(id) { const u = curUser(), h = curHH(u), it = h.items.find(i => i.id === id); if (!it) return; h.items = h.items.filter(i => i.id !== id); addLog(h, u, 'removed', it, 0); save(); UI.modal = null; render(); toast(it.name + ' removed.'); },
+  clearInventory() { const u = curUser(), h = curHH(u); h.items = []; addLog(h, u, 'seed', null, 0, 'cleared the inventory'); save(); UI.modal = null; render(); toast('Inventory cleared.'); },
+  loadSample() { const u = curUser(), h = curHH(u); seedData(h, u); save(); UI.modal = null; UI.route = 'dashboard'; render(); toast('Sample data loaded.'); },
+  removeMember(id) { const u = curUser(), h = curHH(u), m = DB.users.find(x => x.id === id); if (!m || m.id === u.id) return; m.householdId = null; m.role = null; addLog(h, u, 'member', null, 0, 'removed ' + m.name + ' from the household'); save(); UI.modal = null; render(); toast(m.name + ' removed.'); }
+};
+const acts = {
+  nav(el) { UI.route = el.dataset.route; UI.modal = null; render(); window.scrollTo(0, 0); },
+  logout() { DB.session = null; UI.modal = null; UI.route = 'dashboard'; UI.authTab = 'login'; UI.q = ''; UI.loc = 'all'; UI.stat = 'all'; save(); render(); },
+  authTab(el) { UI.authTab = el.dataset.tab; render(); },
+  openAdd() { UI.modal = { type: 'item' }; render(); },
+  openEdit(el) { UI.modal = { type: 'item', id: el.dataset.id }; render(); },
+  openUse(el) { UI.modal = { type: 'use', id: el.dataset.id, kind: el.dataset.kind }; render(); },
+  detail(el) { UI.modal = { type: 'detail', id: el.dataset.id }; render(); },
+  askDelete(el) { const h = curHH(curUser()), it = h.items.find(i => i.id === el.dataset.id); UI.modal = { type: 'confirm', title: 'Remove item?', text: 'Remove ' + (it ? it.name : 'this item') + ' from your kitchen? Its history stays in the log.', yes: 'deleteItem', arg: el.dataset.id, label: 'Remove' }; render(); },
+  askClear() { UI.modal = { type: 'confirm', title: 'Clear inventory?', text: 'This removes every item from the inventory. The shopping list and activity log are kept.', yes: 'clearInventory', label: 'Clear inventory' }; render(); },
+  askRemoveMember(el) { const m = DB.users.find(x => x.id === el.dataset.id); UI.modal = { type: 'confirm', title: 'Remove member?', text: (m ? m.name : 'This person') + ' will lose access to this household.', yes: 'removeMember', arg: el.dataset.id, label: 'Remove' }; render(); },
+  seed() {
+    const h = curHH(curUser());
+    if (h.items.length) { UI.modal = { type: 'confirm', title: 'Replace inventory with sample data?', text: 'Your current items and activity history will be replaced by sample data.', yes: 'loadSample', label: 'Load sample data' }; render(); }
+    else confirms.loadSample();
+  },
+  confirmYes() { const m = UI.modal; if (m && confirms[m.yes]) confirms[m.yes](m.arg); },
+  closeModal() { UI.modal = null; render(); },
+  overlayClose(el, e) { if (e.target === el) { UI.modal = null; render(); } },
+  lookup() {
+    const h = curHH(curUser()), form = document.querySelector('.modal form'), msg = document.getElementById('lookupMsg');
+    if (!form || !msg) return;
+    const code = form.elements.barcode.value.trim();
+    if (h.settings.source === 'manual') { msg.textContent = 'Barcode lookup is off in Household settings. Enter the details by hand.'; return; }
+    const p = CATALOG[code];
+    if (!p) { msg.textContent = code ? 'No product found for that barcode. Enter the details by hand.' : 'Type a barcode first.'; return; }
+    form.elements.name.value = p.name; form.elements.category.value = p.category; form.elements.unit.value = p.unit;
+    form.elements.qty.value = p.qty; form.elements.location.value = p.location; form.elements.min.value = p.min;
+    form.elements.expiry.value = p.shelf ? plusDays(p.shelf) : '';
+    msg.textContent = 'Found ' + p.name + '. Check the quantity and expiry date, then save.';
+  },
+  useAll(el) { const i = document.querySelector('.modal input[name=amount]'); if (i) i.value = el.dataset.max; },
+  genList() {
+    const u = curUser(), h = curHH(u); if (!perms(u).list) return;
+    const n = generateList(h); if (n) addLog(h, u, 'list', null, 0, 'built the smart shopping list (' + n + ' new)'); save(); render();
+    toast(n ? n + (n === 1 ? ' item' : ' items') + ' added to the list.' : 'Nothing new to add. Your stock looks fine.');
+  },
+  toggleShop(el) { const u = curUser(), h = curHH(u); if (!perms(u).list) return; const s = h.shopping.find(x => x.id === el.dataset.id); if (s) { s.done = !s.done; save(); render(); } },
+  delShop(el) { const u = curUser(), h = curHH(u); if (!perms(u).list) return; h.shopping = h.shopping.filter(x => x.id !== el.dataset.id); save(); render(); },
+  clearDone() { const u = curUser(), h = curHH(u); if (!perms(u).list) return; h.shopping = h.shopping.filter(x => !x.done); save(); render(); },
+  bought(el) {
+    const u = curUser(), h = curHH(u); if (!perms(u).inv && !perms(u).list) return;
+    const s = h.shopping.find(x => x.id === el.dataset.id); if (!s) return;
+    const known = h.items.find(i => i.name.toLowerCase() === s.name.toLowerCase());
+    const pre = known ? { name: known.name, category: known.category, unit: known.unit, location: known.location, min: known.min, barcode: known.barcode, qty: s.qty } : { name: s.name, category: 'Other', unit: s.unit, location: 'Fridge', min: 0, qty: s.qty };
+    UI.modal = { type: 'item', pre: pre, shopId: s.id }; render();
+  },
+  copyList() { const h = curHH(curUser()); const t = h.shopping.filter(s => !s.done).map(s => '- ' + s.name + ' ' + fmtQty(s.qty) + ' ' + s.unit).join('\n'); copyText(t, 'Shopping list copied.'); },
+  markRead() { const u = curUser(), h = curHH(u); h.read = h.read || {}; h.read[u.id] = deriveAlerts(h).map(a => a.key); save(); render(); },
+  copyCode() { copyText(curHH(curUser()).code, 'Join code copied.'); }
+};
+document.addEventListener('click', e => {
+  const el = e.target.closest('[data-act]'); if (!el) return;
+  const fn = acts[el.dataset.act]; if (fn) fn(el, e);
+});
+document.addEventListener('submit', e => {
+  const f = e.target.closest('form[data-form]'); if (!f) return;
+  e.preventDefault(); const fn = forms[f.dataset.form]; if (fn) fn(f);
+});
+document.addEventListener('input', e => {
+  if (e.target.id === 'q') { UI.q = e.target.value; refreshInv(); }
+});
+document.addEventListener('change', e => {
+  const t = e.target, u = curUser(), h = curHH(u);
+  if (t.id === 'loc') { UI.loc = t.value; refreshInv(); }
+  else if (t.id === 'stat') { UI.stat = t.value; refreshInv(); }
+  else if (t.id === 'sort') { UI.sort = t.value; refreshInv(); }
+  else if (u && h && t.dataset.setting && perms(u).admin) {
+    const k = t.dataset.setting;
+    if (k === 'alertDays') h.settings.alertDays = Math.min(14, Math.max(1, Math.round(Number(t.value) || 3)));
+    else if (k === 'autoList') h.settings.autoList = t.checked;
+    else if (k === 'source') h.settings.source = t.value;
+    addLog(h, u, 'settings', null, 0, 'changed household settings'); save(); render(); toast('Settings saved.');
+  } else if (u && h && t.dataset.roleUser && perms(u).admin) {
+    const m = DB.users.find(x => x.id === t.dataset.roleUser);
+    if (m && m.id !== u.id && m.householdId === h.id) { m.role = t.value; addLog(h, u, 'member', null, 0, 'changed ' + m.name + ' to ' + ROLE_LABEL[m.role]); save(); render(); toast(m.name + ' is now ' + ROLE_LABEL[m.role] + '.'); }
+  } else if (u && h && t.dataset.shopqty && perms(u).list) {
+    const s = h.shopping.find(x => x.id === t.dataset.shopqty), v = Number(t.value);
+    if (s && v > 0) { s.qty = v; save(); } else render();
+  }
+});
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && UI.modal) { UI.modal = null; render(); }
+  else if (e.key === 'Enter' && e.target && e.target.name === 'barcode') { e.preventDefault(); acts.lookup(); }
+});
+
+render();
+})();
+
+</script>
+</body>
+</html>
